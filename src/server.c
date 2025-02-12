@@ -13,6 +13,16 @@
 
 #define PORT "8080"
 #define BACKLOG 20
+#define MAXDATASIZE 1024
+
+void serve_website(int new_fd) {
+  char *header = "HTTP/1.1 200 OK\nContent-Type: text/html\n\n";
+  char *body = "<html><body><h1>Hello, world!</h1></body></html>";
+  char response[strlen(header) + strlen(body)];
+  strcpy(response, header);
+  strcat(response, body);
+  send(new_fd, response, strlen(response), 0);
+}
 
 int main() {
   printf("Server start\n");
@@ -53,6 +63,7 @@ int main() {
   printf("Server is listening on port %s\n", PORT);
 
   while (1) {
+    char buf[MAXDATASIZE];
     sin_size = sizeof(struct sockaddr_storage);
     if ((new_fd = accept(sockfd, (struct sockaddr *)&res, &sin_size)) == -1) {
       perror("accept");
@@ -62,8 +73,13 @@ int main() {
     printf("Server: got connection from %s\n",
            inet_ntoa(((struct sockaddr_in *)&res)->sin_addr));
 
-    if (!fork()) {
+    if (!fork()) { // child process
       close(sockfd);
+      if (recv(new_fd, buf, MAXDATASIZE - 1, 0) == -1) {
+        perror("recv");
+      }
+      // write(1, buf, strlen(buf));
+      serve_website(new_fd);
       if (send(new_fd, "Hello, world!", 13, 0) == -1) {
         perror("send");
       }
