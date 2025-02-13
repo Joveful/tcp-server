@@ -17,11 +17,35 @@
 
 void serve_website(int new_fd) {
   char *header = "HTTP/1.1 200 OK\nContent-Type: text/html\n\n";
-  char *body = "<html><body><h1>Hello, world!</h1></body></html>";
+  FILE *file = fopen("index.html", "r");
+  size_t nread;
+  char body[MAXDATASIZE];
+  if (file) {
+    while ((nread = fread(body, 1, sizeof(body), file)) > 0) {
+      ;
+    }
+    fclose(file);
+  }
   char response[strlen(header) + strlen(body)];
   strcpy(response, header);
   strcat(response, body);
-  send(new_fd, response, strlen(response), 0);
+  if (send(new_fd, response, strlen(response), 0) == -1)
+    perror("send");
+}
+
+void parse_request(char *buf) {
+  char *method = strtok(buf, " ");
+  char *path = strtok(NULL, " ");
+  char *protocol = strtok(NULL, "\r\n");
+  printf("Method: %s\n", method);
+  printf("Path: %s\n", path);
+  printf("Protocol: %s\n", protocol);
+  char *msg;
+  while ((msg = strtok(NULL, "=")) != NULL) {
+    if (strstr(msg, "fname") != NULL) {
+      printf("POST: %s\n", strtok(NULL, "\r\n"));
+    }
+  }
 }
 
 int main() {
@@ -78,9 +102,10 @@ int main() {
       if (recv(new_fd, buf, MAXDATASIZE - 1, 0) == -1) {
         perror("recv");
       }
-      // write(1, buf, strlen(buf));
       serve_website(new_fd);
-      if (send(new_fd, "Hello, world!", 13, 0) == -1) {
+      parse_request(&buf[0]);
+
+      if (send(new_fd, "Hello, world!\n", 13, 0) == -1) {
         perror("send");
       }
       close(new_fd);
