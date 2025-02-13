@@ -46,12 +46,13 @@ void parse_request(char *buf) {
       printf("POST: %s\n", strtok(NULL, "\r\n"));
     }
   }
+  printf("\n");
 }
 
 int main() {
   printf("Server start\n");
 
-  struct addrinfo hints, *res;
+  struct addrinfo hints, *res, *p;
   // struct sockaddr_storage their_addr;
   int sockfd, new_fd;
   socklen_t sin_size;
@@ -67,14 +68,25 @@ int main() {
     return 1;
   }
 
-  if ((sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) ==
-      -1) {
-    perror("socket");
-    return 1;
-  }
-  if ((rv = bind(sockfd, res->ai_addr, res->ai_addrlen)) != 0) {
-    perror("bind");
-    return 1;
+  for (p = res; p != NULL; p = p->ai_next) {
+    if ((sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+      perror("socket");
+      continue;
+    }
+
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) ==
+        -1) {
+      perror("setsockopt");
+      exit(1);
+    }
+
+    if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+      close(sockfd);
+      perror("bind");
+      continue;
+    }
+
+    break;
   }
 
   freeaddrinfo(res);
